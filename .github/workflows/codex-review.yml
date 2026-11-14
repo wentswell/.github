@@ -415,6 +415,15 @@ jobs:
             const head = process.env.HEAD;
             const title = "## Codex review";
 
+            // GitHub refuses a review body or a comment over 65,536
+            // characters, and the fallback below must always fit. Clip each
+            // part, and keep the full answer in the job log.
+            const MAX = 60000;
+            const clip = (s, n) => (s.length > n
+              ? `${s.slice(0, n)}\n\n*(Truncated. The full review is in the log of the \`post\` job.)*`
+              : s);
+            core.info(process.env.REVIEW);
+
             let review;
             try {
               review = JSON.parse(process.env.REVIEW);
@@ -422,7 +431,7 @@ jobs:
               // Not the schema's JSON: post the text as it is.
               await github.rest.pulls.createReview({
                 owner, repo, pull_number, commit_id: head, event: "COMMENT",
-                body: `${title}\n\n${process.env.REVIEW}`,
+                body: clip(`${title}\n\n${process.env.REVIEW}`, MAX),
               });
               return;
             }
@@ -465,9 +474,9 @@ jobs:
               .map((f) => ({ ...f, path: normalize(f.path) }))
               .sort((a, b) => (rank[a.severity] ?? 9) - (rank[b.severity] ?? 9));
 
-            const label = (f) => `**${cap(f.severity)} (${f.category}): ${f.title}**`;
+            const label = (f) => `**${cap(f.severity)} (${f.category}): ${clip(f.title, 300)}**`;
             const details = (f) =>
-              `${f.description}\n\n**Scenario:** ${f.scenario}\n\n**Fix:** ${f.fix}`;
+              `${clip(f.description, 4000)}\n\n**Scenario:** ${clip(f.scenario, 3000)}\n\n**Fix:** ${clip(f.fix, 3000)}`;
             const link = (f) =>
               `https://github.com/${owner}/${repo}/blob/${head}/${f.path}#L${f.line}`;
 
@@ -482,13 +491,13 @@ jobs:
             }
 
             const bodyFor = (list) => {
-              let body = `${title}\n\n${review.summary}`;
+              let body = `${title}\n\n${clip(review.summary, 3000)}`;
               if (list.length) {
                 body += "\n\nNot on a line of the diff:\n\n" + list
                   .map((f) => `- ${label(f)} [\`${f.path}:${f.line}\`](${link(f)})\n\n  ${details(f).replace(/\n/g, "\n  ")}`)
                   .join("\n");
               }
-              return body;
+              return clip(body, MAX);
             };
 
             try {
