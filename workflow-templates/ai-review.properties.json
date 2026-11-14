@@ -1,0 +1,6 @@
+{
+  "name": "AI Review",
+  "description": "Codex reviews each pull request and posts inline review comments. Calls the shared codex-review workflow.",
+  "iconName": "octicon code-review",
+  "categories": ["Automation"]
+}
