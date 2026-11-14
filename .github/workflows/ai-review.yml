@@ -1,0 +1,48 @@
+name: AI Review
+
+# Codex reviews each pull request in this repository with the local copy of
+# the shared workflow, so a pull request that changes the shared workflow is
+# its own first test. The other repositories call it at @main.
+
+on:
+  pull_request:
+    branches: [main, dev]
+    types: [opened, ready_for_review]
+  # The review runs once, when the pull request opens. To run it again after a
+  # push, comment `/ai-review` on the pull request.
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+# A second review of the same pull request replaces the first: the group
+# cancels the whole earlier run, so its `post` cannot publish a superseded
+# review. The group is on the workflow, not on the jobs: separate job groups
+# leave a gap between `codex` and `post` where an older run's `post` can cancel
+# a newer `codex`.
+#
+# Only the pull request's own events and a `/ai-review` from an owner, member,
+# or collaborator join that group. Any other comment, and a `/ai-review` from
+# anyone else, goes in a group of its own, so it cannot cancel a running
+# review. `author_association` only sorts the run into a group here. The `auth`
+# step in the shared workflow still decides who may run the review.
+concurrency:
+  group: >-
+    ai-review-${{ github.event.pull_request.number || github.event.issue.number
+    }}-${{ github.event_name == 'pull_request'
+    || (startsWith(github.event.comment.body, '/ai-review')
+        && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+                    github.event.comment.author_association)) }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    uses: ./.github/workflows/codex-review.yml
+    # The most that any job in the shared workflow may have. Each job there
+    # narrows it, and the job that runs the model gets read access only.
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
