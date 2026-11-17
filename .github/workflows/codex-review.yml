@@ -160,7 +160,10 @@ jobs:
     if: >-
       needs.preflight.outputs.enabled == 'true'
       && needs.preflight.outputs.number != ''
-    runs-on: ubuntu-latest
+    # Pinned: on ubuntu-26.04 (ubuntu-latest since 2026-11-17) codex-action
+    # v1.13 cannot drop sudo ("Could not restrict access to
+    # /run/dbus/system_bus_socket") and every review fails.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       # To read the description and the earlier review threads. Read only.
