@@ -255,6 +255,12 @@ jobs:
       # skips this step. A failure here never fails the review: Codex then
       # reviews without the spec, as before. Codex never sees the password,
       # only the file.
+      #
+      # GitHub does not mask a variable: the log of this step shows the value
+      # in its `env:` header. The owner accepted this (2026-11-17). Only the
+      # four private repositories see the variable, so only a person who can
+      # read their Actions logs can read it, and it guards a read-only spec.
+      # Never make the variable visible to a public repository.
       - name: API contract
         env:
           KEY: ${{ vars.OPENAPI_KEY }}
@@ -266,7 +272,6 @@ jobs:
             echo "::notice::OPENAPI_KEY is not set here. No API contract."
             exit 0
           fi
-          echo "::add-mask::$KEY"
           case "$BASE_REF" in
             main) host=admin.wentswell.com ;;
             *)    host=admin.dev.wentswell.com ;;
